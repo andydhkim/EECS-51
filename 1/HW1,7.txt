@@ -1,0 +1,32 @@
+Dong Hyun Kim
+EE/CS 51
+Homework #1, Problem 7
+
+(A) No, the event handler is not being called. Setting a breakpoint at 
+    TimerEvent2Handler and typing "go" also does not display a breakpoint on the
+    command prompt, meaning that there is no event handler being called.
+
+(B) Yes, the timer is running. If we continually type in the command "pcb" (after
+    we run the program by typing in "go") we can notice that the Timer 2 Cnt 
+    changed in value. This change in value tells us that Timer 2 is indeed running.
+    
+(C) Yes, they are generating interrupts. If we type in the command "pcb" (after
+    we run the program by typing in "go"), we can notice that the Int Request is
+    0001H and Int Status is 8004H, but the In Service is still 0000H. Hence, the 
+    Timer2 is requesting an interrupt but the program is unable to call the event 
+    handler.
+    
+(D) No, the processor is not responding to any interrupts. The Int Mask value is
+    currently 00fdH, which means that every interrupt source has been masked, 
+    or disabled. Hence, the processor is unable to process the interrupt request
+    from Timer 2.
+    
+(E) The best way to fix this bug is to directly change the register value of 
+    Int Mask. To do this, one can use the "wport" command and type in a value
+    at Int Mask. A valid command would be "wport 0ff28H 00fcH", which effectively 
+    changes the value of Int Mask to 00fcH. Since the Timer interrupt is now
+    not masked, the processor can successfully call the event handler. In fact,
+    if we set a breakpoint at Timer2EventHandler and type the command "go", we 
+    will get an event handler message; hence, the event handler is being called.
+    Once we clear all the breakpoints using the "clear all" message and click go,
+    we can finally observe the phrase "U Got It" on the LED display.

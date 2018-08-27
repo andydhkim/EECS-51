@@ -1,0 +1,21 @@
+Dong Hyun Kim
+EE/CS 51
+Homework #1, Problem 5
+
+Keypad (80H to 83H):
+The addresses 80H to 83H correspond to each row of the keypad. The 80H is associated
+with the top row, and 83H corresopnds to the bottom row. The first 4 bits 
+don't change when the keys are pressed. However, the lower 4 bits change depending
+on the different keys in each row. If the bit is 0, the button is unpressed; if the
+bit is 1, the button is pressed. The lowest of the lower 4 bits is associated
+with the leftmost button, and the highest of the lower 4 bits is associated with
+the rightmost button.
+
+Display (00H to 07H):
+The addresses 00H to 07H each correspond to different digits on the display. When
+a specific number is sent to one of the addresses, it will light up the digit
+corresponding to the address. Assuming the number is an 8-bit binary, each bit
+corresponds to a segment of the digit; 1 will light up the segment, and 0 will
+not. The first bit is the top, second is top right, third is bottom right, fourth
+is bottom, fifth is bottom left, sixth is top left, seventh is the middle line,
+and eight is the dot in the bottom right.

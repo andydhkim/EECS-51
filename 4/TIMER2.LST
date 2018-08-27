@@ -1,0 +1,350 @@
+8086/87/88/186 MACRO ASSEMBLER    TIMER2                                                   12:27:48  10/29/;6  PAGE    1
+
+
+DOS 5.0 (038-N) 8086/87/88/186 MACRO ASSEMBLER V3.1 ASSEMBLY OF MODULE TIMER2
+OBJECT MODULE PLACED IN TIMER2.OBJ
+ASSEMBLER INVOKED BY:  C:\UTIL\ASM86.EXE TIMER2.ASM M1 DB EP
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                             1            NAME  Timer2
+                             2     
+                             3     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             4     ;                                                                            ;
+                             5     ;                                    Timer2                                  ;
+                             6     ;                          Timer2 Handler Functions                          ;
+                             7     ;                                   EE/CS 51                                 ;
+                             8     ;                                                                            ;
+                             9     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                            10     
+                            11     
+                            12     ; Description:          This file contains three functions that handles Timer 2 and 
+                            13     ;                                       Timer 2 events in the clock. It allows the LE
+                                   D to display the 
+                            14     ;                                       necessary strings for RoboTrike by calling th
+                                   e Multiplex
+                            15     ;                   function at every interrupt.
+                            16     ; 
+                            17     ; Table of Contents:
+                            18     ;   InitTimer2:                         Initializes the 808188 Timer 2, the time keep
+                                   ing 
+                            19     ;                                   variables, and flags.
+                            20     ;       InstallTimer2Handler:   Installs the event handler for the timer interrupt.
+                            21     ;   Timer2EventHandler:         The event handler for the Timer 2 interrupt, outputti
+                                   ng
+                            22     ;                                                   the next segment pattern.
+                            23     ;
+                            24     ; Input:            None.
+                            25     ; Output:           The Timer2EventHandler will call the Multiplex function to 
+                            26     ;                                       output to the LED display through interrupts.
+                            27     ;
+                            28     ; User Interface:   None.
+                            29     ; Error Handling:   None.
+                            30     ;
+                            31     ; Algorithms:       None.
+                            32     ; Data Structures:  None.
+                            33     ;
+                            34     ; Revision History:
+                            35     ;       10/27/16    Dong Hyun Kim       initial revision
+                            36     ;       10/28/16    Dong Hyun Kim       updated comments
+                            37     
+                            38     
+                            39     
+                            40     ; local include files
+                            41 +1  $INCLUDE(Timer2.INC)
+                      =1    42     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    43     ;                                                                            ;
+                      =1    44     ;                                  Timer2.INC                                ;
+                      =1    45     ;                           Timer2 Handler Functions                         ;
+                      =1    46     ;                                 Include File                               ;
+8086/87/88/186 MACRO ASSEMBLER    TIMER2                                                   12:27:48  10/29/;6  PAGE    2
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                      =1    47     ;                                                                            ;
+                      =1    48     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    49     
+                      =1    50     ; This file contains the definitions for the Timer2 Handler Functions program, 
+                      =1    51     ; (Timer2.ASM).
+                      =1    52     ;
+                      =1    53     ; Revision History:
+                      =1    54     ;   10/27/16    Dong Hyun Kim       initial revision
+                      =1    55     ;       10/28/16        Dong Hyun Kim           updated Tmr2CtrlVal to enable interru
+                                   pt
+                      =1    56     
+                      =1    57     
+                      =1    58     ; Timer Definitions
+                      =1    59     
+                      =1    60     ; Addresses
+  FF66                =1    61     Tmr2Ctrl        EQU     0FF66H          ;address of Timer 2 Control Register
+  FF62                =1    62     Tmr2MaxCnt      EQU     0FF62H          ;address of Timer 2 Max Count A Register
+  FF60                =1    63     Tmr2Count       EQU     0FF60H          ;address of Timer 2 Count Register
+                      =1    64     
+                      =1    65     ; Control Register Values
+  E001                =1    66     Tmr2CtrlVal     EQU     0E001H          ;value to write to Timer 2 Control Register
+                      =1    67                                             ;1---------------  enable timer
+                      =1    68                                             ;-1--------------  write to control
+                      =1    69                                             ;--1-------------  enable interrupts
+                      =1    70                                             ;----000000-0000-  reserved
+                      =1    71                                             ;---0------0-----  read only
+                      =1    72                                             ;---------------1  continuous mode
+                      =1    73     
+                      =1    74     ; Interrupt Vectors
+  0013                =1    75     Tmr2Vec         EQU     19              ;interrupt vector for Timer 2
+                      =1    76     
+                      =1    77     
+                      =1    78     ; Interrupt Controller Definitions
+                      =1    79     
+                      =1    80     ; Addresses
+  FF32                =1    81     INTCtrlrCtrl    EQU     0FF32H          ;address of interrupt controller for timer
+  FF22                =1    82     INTCtrlrEOI     EQU     0FF22H          ;address of interrupt controller EOI register
+                      =1    83     
+                      =1    84     ; Register Values
+  0001                =1    85     INTCtrlrCVal    EQU     00001H          ;set priority for timers to 1 and enable
+                      =1    86                                             ;000000000000----  reserved
+                      =1    87                                             ;------------0---  enable timer interrupt
+                      =1    88                                             ;-------------001  timer priority
+  0008                =1    89     TimerEOI        EQU     00008H          ;Timer EOI command (same for all timers)
+                      =1    90                                     
+                      =1    91     
+                      =1    92     ; Timing Definitions
+                      =1    93     
+  0900                =1    94     COUNTS_PER_MS   EQU     2304            ;number of timer counts per 1 ms 
+                      =1    95                                                                                     ;
+                                      (assumes 18.432 MHz clock)
+                            96     
+                            97     
+                            98     
+                            99     ;external function declarations
+8086/87/88/186 MACRO ASSEMBLER    TIMER2                                                   12:27:48  10/29/;6  PAGE    3
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           100             EXTRN   Multiplex:NEAR                  ;Called whenever there is an interrup
+                                   t
+                           101                                                                                     ;
+                                      and displays a digit on the LED display.
+                           102     
+                           103     
+                           104     
+                           105     CGROUP  GROUP   CODE
+                           106     
+                           107     
+----                       108     CODE    SEGMENT PUBLIC 'CODE'
+                           109     
+                           110     
+                           111             ASSUME  CS:CGROUP
+                           112     
+                           113     
+                           114     
+                           115     
+                           116     ; InitTimer2
+                           117     ;
+                           118     ; Description:       This function initializes the 808188 Timer 2, the time keeping
+                           119     ;                    variables, and flags. The Timer is initialized to generate
+                           120     ;                    interrupts every 1 ms. The interrupt controller is also 
+                           121     ;                    initialized to allow the timer interrupts. The Timer 2 is 
+                           122     ;                    used to scale the internal clock from 18 MHz to 1 KHz.
+                           123     ;
+                           124     ; Operation:         The appropriate values are written to the timer control
+                           125     ;                    registers in the PCB.  Also, the timer count registers
+                           126     ;                    are reset to zero.  Finally, the interrupt controller is
+                           127     ;                    set up to accept timer interrupts and any pending
+                           128     ;                    interrupts are cleared by sending a TimerEOI to the
+                           129     ;                    interrupt controller.
+                           130     ;
+                           131     ; Arguments:         None.
+                           132     ; Return Value:      None.
+                           133     ;
+                           134     ; Local Variables:   None.
+                           135     ; Shared Variables:  None.
+                           136     ; Global Variables:  None.
+                           137     ;
+                           138     ; Input:             None.
+                           139     ; Output:            None.
+                           140     ;
+                           141     ; Error Handling:    None.
+                           142     ;
+                           143     ; Algorithms:        None.
+                           144     ; Data Structures:   None.
+                           145     ;
+                           146     ; Registers Changed: AX, DX
+                           147     ; Limitations:       None.
+                           148     ; Known Bugs:        None.
+                           149     ; Stack Depth:       0 words
+                           150     ;
+                           151     ; Revision History:  10/27/16    Dong Hyun Kim   initial revision
+                           152     ;                    10/28/16    Dong Hyun Kim   updated comments
+8086/87/88/186 MACRO ASSEMBLER    TIMER2                                                   12:27:48  10/29/;6  PAGE    4
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           153     
+0000                       154     InitTimer2      PROC    NEAR
+                           155                                     PUBLIC  InitTimer2
+                           156     
+0000 BA60FF                157             MOV     DX, Tmr2Count   ;initialize the count register to 0
+0003 33C0                  158             XOR     AX, AX
+0005 EE                    159             OUT     DX, AL
+                           160     
+0006 BA62FF                161             MOV     DX, Tmr2MaxCnt  ;set up max count for 1ms counts
+0009 B80009                162             MOV     AX, COUNTS_PER_MS
+000C EE                    163             OUT     DX, AL
+                           164     
+000D BA66FF                165             MOV     DX, Tmr2Ctrl    ;set up the control register with interrupts
+0010 B801E0                166             MOV     AX, Tmr2CtrlVal
+0013 EE                    167             OUT     DX, AL
+                           168             
+                           169                                     ;initialize interrupt controller for timers
+0014 BA32FF                170             MOV     DX, INTCtrlrCtrl;set up the interrupt control register
+0017 B80100                171             MOV     AX, INTCtrlrCVal
+001A EE                    172             OUT     DX, AL
+                           173     
+001B BA22FF                174             MOV     DX, INTCtrlrEOI ;send a timer EOI (to clear out controller)
+001E B80800                175             MOV     AX, TimerEOI
+0021 EE                    176             OUT     DX, AL
+                           177     
+                           178     
+0022 C3                    179             RET                     ;done so return
+                           180     
+                           181     InitTimer2      ENDP
+                           182     
+                           183     
+                           184     
+                           185     
+                           186     ; InstallTimer2Handler
+                           187     ;
+                           188     ; Description:       Install the event handler for the timer interrupt.
+                           189     ;
+                           190     ; Operation:         Writes the address of the timer event handler to the
+                           191     ;                    appropriate interrupt vector.
+                           192     ;
+                           193     ; Arguments:         None.
+                           194     ; Return Value:      None.
+                           195     ;
+                           196     ; Local Variables:   None.
+                           197     ; Shared Variables:  None.
+                           198     ; Global Variables:  None.
+                           199     ;
+                           200     ; Input:             None.
+                           201     ; Output:            None.
+                           202     ;
+                           203     ; Error Handling:    None.
+                           204     ;
+                           205     ; Algorithms:        None.
+                           206     ; Data Structures:   None.
+                           207     ;
+8086/87/88/186 MACRO ASSEMBLER    TIMER2                                                   12:27:48  10/29/;6  PAGE    5
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           208     ; Registers Changed: flags, AX, ES
+                           209     ; Limitations:       None.
+                           210     ; Known Bugs:        None.
+                           211     ; Stack Depth:       0 words
+                           212     ;
+                           213     ; Revision History:  10/27/16    Dong Hyun Kim   initial revision
+                           214     ;                    10/28/16    Dong Hyun Kim   updated comments
+                           215     
+0023                       216     InstallTimer2Handler  PROC    NEAR
+                           217                           PUBLIC  InstallTimer2Handler
+                           218     
+                           219     
+0023 33C0                  220             XOR     AX, AX          ;clear ES (interrupt vectors are in segment 0)
+0025 8EC0                  221             MOV     ES, AX
+                           222                                     ;store the vector
+0027 26C7064C003600 R      223             MOV     ES: WORD PTR (4 * Tmr2Vec), OFFSET(Timer2EventHandler)
+002E 26C7064E00---- R      224             MOV     ES: WORD PTR (4 * Tmr2Vec + 2), SEG(Timer2EventHandler)
+                           225     
+                           226     
+0035 C3                    227             RET                     ;all done, return
+                           228     
+                           229     
+                           230     InstallTimer2Handler  ENDP
+                           231     
+                           232     
+                           233     
+                           234     
+                           235     ; Timer2EventHandler
+                           236     ;
+                           237     ; Description:       This function is the event handler for the Timer #2
+                           238     ;                    interrupt. It outputs the next segment pattern to the
+                           239     ;                    LED display. After going through all the segment patterns
+                           240     ;                    for a digit it goes on to the next digit. After doing all 
+                           241     ;                    the digits it starts over again.
+                           242     ;
+                           243     ; Operation:         The registers are initially pushed onto a stack to preserve 
+                           244     ;                    their values. Multiplex is called to update the segment 
+                           245     ;                    pattern index. The EOI is then sent to the interrupt controller;
+                           246     ;                    the registers are then restored. 
+                           247     ;
+                           248     ; Arguments:         None.
+                           249     ; Return Value:      None.
+                           250     ;
+                           251     ; Local Variables:   AX - Timer 2's EOI.
+                           252     ;                    DX - Address of interrupt controller EOI register.
+                           253     ; Shared Variables:  None.
+                           254     ; Global Variables:  None.
+                           255     ;
+                           256     ; Input:             None.
+                           257     ; Output:            A segment to the display.
+                           258     ;
+                           259     ; Error Handling:    None.
+                           260     ;
+                           261     ; Algorithms:        None.
+                           262     ; Data Structures:   None.
+8086/87/88/186 MACRO ASSEMBLER    TIMER2                                                   12:27:48  10/29/;6  PAGE    6
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           263     ;
+                           264     ; Registers Changed: None.
+                           265     ; Limitations:       None.
+                           266     ; Known Bugs:        None.
+                           267     ; Stack Depth:       3 words
+                           268     ;
+                           269     ; Revision History:  10/27/16    Dong Hyun Kim   initial revision
+                           270     ;                    10/28/16    Dong Hyun Kim   fixed stack issue and updated
+                           271     ;                                                   comments
+                           272     
+                           273     
+0036                       274     Timer2EventHandler      PROC    NEAR
+                           275                             PUBLIC  Timer2EventHandler
+                           276     
+0036 50                    277             PUSH    AX                      ;save the registers and flags, since 
+0037 52                    278             PUSH    DX                      ;   Event Handlers should NEVER change
+0038 56                    279             PUSH    SI                      ;   any register values
+0039 9C                    280             PUSHF
+                           281             
+003A E80000         E      282             CALL    Multiplex               ;Update the digit every clock tick
+                           283     
+003D BA22FF                284             MOV     DX, INTCtrlrEOI         ;send the EOI to the interrupt controller
+0040 B80800                285             MOV     AX, TimerEOI
+0043 EE                    286             OUT     DX, AL
+                           287     
+0044 9D                    288             POPF                            ;restore the registers
+0045 5E                    289             POP     SI
+0046 5A                    290             POP     DX                      
+0047 58                    291             POP     AX
+                           292     
+0048 CF                    293             IRET                            ;and return (Event Handlers end with IRET not
+                                    RET)
+                           294     
+                           295     Timer2EventHandler      ENDP
+                           296     
+                           297     
+                           298     
+                           299     
+----                       300     CODE    ENDS
+                           301     
+                           302     
+                           303     
+                           304             END
+
+ASSEMBLY COMPLETE, NO ERRORS FOUND

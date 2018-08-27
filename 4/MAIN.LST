@@ -1,0 +1,232 @@
+8086/87/88/186 MACRO ASSEMBLER    MAIN                                                     12:27:47  10/29/;6  PAGE    1
+
+
+DOS 5.0 (038-N) 8086/87/88/186 MACRO ASSEMBLER V3.1 ASSEMBLY OF MODULE MAIN
+OBJECT MODULE PLACED IN MAIN.OBJ
+ASSEMBLER INVOKED BY:  C:\UTIL\ASM86.EXE MAIN.ASM M1 DB EP
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                             1             NAME    MAIN
+                             2     
+                             3     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             4     ;                                                                            ;
+                             5     ;                                     MAIN                                   ;
+                             6     ;                          Display Function Main Loop                        ;
+                             7     ;                                   EE/CS 51                                 ;
+                             8     ;                                                                            ;
+                             9     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                            10     
+                            11     ; Description:      This program contains the main loop for the Display Function.
+                            12     ;                                       It initializes the chip set logic, timers, in
+                                   terrupts and 
+                            13     ;                                       the display code then calls the DisplayTest p
+                                   rocedure.                
+                            14     ;
+                            15     ; Input:            None.
+                            16     ; Output:           None.
+                            17     ;
+                            18     ; User Interface:   No real user interface.  The DisplayTest initially displays 
+                            19     ;                   a series of strings for 3 seconds. The user can set breakpoints 
+                            20     ;                   at HexDisplay and DecimalDisplay to see if the code is working
+                            21     ;                   or not.
+                            22     ; Error Handling:   The user has to test the code by setting breakpoints before
+                            23     ;                                       the calls to DisplayHex and DisplayNum and pu
+                                   tting appropriate
+                            24     ;                                       test values in AX.
+                            25     ;
+                            26     ; Algorithms:       None.
+                            27     ; Data Structures:  None.
+                            28     ;
+                            29     ; Known Bugs:       None.
+                            30     ; Limitations:      None.
+                            31     ;
+                            32     ; Revision History:
+                            33     ;   10/27/16    Dong Hyun Kim       initial revision
+                            34     ;   10/28/16    Dong Hyun Kim       debugged and updated comments
+                            35     
+                            36     
+                            37     
+                            38     ; local include files
+                            39 +1  $INCLUDE(Display.INC)
+                      =1    40     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    41     ;                                                                            ;
+                      =1    42     ;                                 Display.INC                                ;
+                      =1    43     ;                               Display Functions                                ;
+                      =1    44     ;                                 Include File                               ;
+                      =1    45     ;                                                                            ;
+                      =1    46     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    47     
+8086/87/88/186 MACRO ASSEMBLER    MAIN                                                     12:27:47  10/29/;6  PAGE    2
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                      =1    48     ; This file contains the definitions for the Display Program (Display.asm).
+                      =1    49     ;
+                      =1    50     ; Revision History:
+                      =1    51     
+                      =1    52     
+                      =1    53     ; Definitions
+  0008                =1    54     BUF_LENGTH      EQU     8           ;length of the buffer containing code segment
+  0008                =1    55     LED_LENGTH      EQU     8           ;number of digits that can be displayed on 
+                      =1    56                                         ;   the LED display
+  0000                =1    57     ASCII_NULL      EQU     0H          ;string termination character (<null>)
+                      =1    58     
+                      =1    59     ; Addresses
+  0000                =1    60     OFFSETAD        EQU     0000H       ;address of leftmost digit of LED display
+                            61 +1  $INCLUDE(Timer2.INC)    
+                      =1    62     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    63     ;                                                                            ;
+                      =1    64     ;                                  Timer2.INC                                ;
+                      =1    65     ;                           Timer2 Handler Functions                         ;
+                      =1    66     ;                                 Include File                               ;
+                      =1    67     ;                                                                            ;
+                      =1    68     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    69     
+                      =1    70     ; This file contains the definitions for the Timer2 Handler Functions program, 
+                      =1    71     ; (Timer2.ASM).
+                      =1    72     ;
+                      =1    73     ; Revision History:
+                      =1    74     ;   10/27/16    Dong Hyun Kim       initial revision
+                      =1    75     ;       10/28/16        Dong Hyun Kim           updated Tmr2CtrlVal to enable interru
+                                   pt
+                      =1    76     
+                      =1    77     
+                      =1    78     ; Timer Definitions
+                      =1    79     
+                      =1    80     ; Addresses
+  FF66                =1    81     Tmr2Ctrl        EQU     0FF66H          ;address of Timer 2 Control Register
+  FF62                =1    82     Tmr2MaxCnt      EQU     0FF62H          ;address of Timer 2 Max Count A Register
+  FF60                =1    83     Tmr2Count       EQU     0FF60H          ;address of Timer 2 Count Register
+                      =1    84     
+                      =1    85     ; Control Register Values
+  E001                =1    86     Tmr2CtrlVal     EQU     0E001H          ;value to write to Timer 2 Control Register
+                      =1    87                                             ;1---------------  enable timer
+                      =1    88                                             ;-1--------------  write to control
+                      =1    89                                             ;--1-------------  enable interrupts
+                      =1    90                                             ;----000000-0000-  reserved
+                      =1    91                                             ;---0------0-----  read only
+                      =1    92                                             ;---------------1  continuous mode
+                      =1    93     
+                      =1    94     ; Interrupt Vectors
+  0013                =1    95     Tmr2Vec         EQU     19              ;interrupt vector for Timer 2
+                      =1    96     
+                      =1    97     
+                      =1    98     ; Interrupt Controller Definitions
+                      =1    99     
+                      =1   100     ; Addresses
+  FF32                =1   101     INTCtrlrCtrl    EQU     0FF32H          ;address of interrupt controller for timer
+8086/87/88/186 MACRO ASSEMBLER    MAIN                                                     12:27:47  10/29/;6  PAGE    3
+
+
+LOC  OBJ                  LINE     SOURCE
+
+  FF22                =1   102     INTCtrlrEOI     EQU     0FF22H          ;address of interrupt controller EOI register
+                      =1   103     
+                      =1   104     ; Register Values
+  0001                =1   105     INTCtrlrCVal    EQU     00001H          ;set priority for timers to 1 and enable
+                      =1   106                                             ;000000000000----  reserved
+                      =1   107                                             ;------------0---  enable timer interrupt
+                      =1   108                                             ;-------------001  timer priority
+  0008                =1   109     TimerEOI        EQU     00008H          ;Timer EOI command (same for all timers)
+                      =1   110                                     
+                      =1   111     
+                      =1   112     ; Timing Definitions
+                      =1   113     
+  0900                =1   114     COUNTS_PER_MS   EQU     2304            ;number of timer counts per 1 ms 
+                      =1   115                                                                                     ;
+                                      (assumes 18.432 MHz clock)
+                           116     
+                           117     
+                           118     CGROUP  GROUP   CODE
+                           119     DGROUP  GROUP   DATA, STACK
+                           120     
+                           121     
+                           122     
+----                       123     CODE    SEGMENT PUBLIC 'CODE'
+                           124     
+                           125     
+                           126             ASSUME  CS:CGROUP, DS:DGROUP
+                           127     
+                           128     
+                           129     
+                           130     ;external function declarations
+                           131                     
+                           132                     EXTRN   InitDisplay:NEAR                
+                           133                     EXTRN   InitCS:NEAR                             
+                           134                     EXTRN   InstallTimer2Handler:NEAR
+                           135                     EXTRN   InitTimer2:NEAR 
+                           136                     EXTRN   ClrIRQVectors:NEAR
+                           137             EXTRN   DisplayTest:NEAR
+                           138     
+0000                       139     START:  
+                           140     
+0000                       141     MAIN:
+0000 B8----         R      142             MOV     AX, STACK               ;initialize the stack pointer
+0003 8ED0                  143             MOV     SS, AX
+0005 BCE00190       R      144             MOV     SP, OFFSET(TopOfStack)
+                           145     
+0009 B8----         R      146             MOV     AX, DATA                ;initialize the data segment
+000C 8ED8                  147             MOV     DS, AX
+                           148     
+000E E80000         E      149                     CALL    InitDisplay                             ;initialize display v
+                                   ariables
+                           150                     
+0011 E80000         E      151                     CALL    InitCS                                  ;initialize the 80188
+                                    chip selects
+                           152                                             ;   assumes LCS and UCS already set up
+                           153                                                                                     
+8086/87/88/186 MACRO ASSEMBLER    MAIN                                                     12:27:47  10/29/;6  PAGE    4
+
+
+LOC  OBJ                  LINE     SOURCE
+
+0014 E80000         E      154                     CALL    ClrIRQVectors                   ;clear (initialize) interrupt
+                                    vector table
+                           155                     
+0017 E80000         E      156                     CALL    InstallTimer2Handler    ;install the event handler
+                           157                                             ;   ALWAYS install handlers before
+                           158                                             ;   allowing the hardware to interrupt.
+                           159                     
+001A E80000         E      160                     CALL    InitTimer2                              ;initialize the inter
+                                   nal timer
+001D FB                    161             STI                             ;       and finally allow interrupts.
+                           162                     
+001E E80000         E      163             CALL    DisplayTest             ;do the appropriate tests
+                           164             ;JMP    Forever                     ;go to an infinite loop
+                           165     
+0021                       166     Forever: 
+0021 EBFE                  167                     JMP    Forever                  ;sit in an infinite loop, nothing to
+                           168                                             ;   do in the background routine
+0023 F4                    169             HLT                             ;never executed (hopefully)
+                           170     
+                           171     
+                           172     
+----                       173     CODE    ENDS
+                           174             
+                           175             
+                           176     ;the data segment (empty for the main loop)
+                           177     
+----                       178     DATA    SEGMENT PUBLIC  'DATA'
+                           179     
+----                       180     DATA    ENDS
+                           181     
+                           182     
+                           183     ;the stack
+                           184     
+----                       185     STACK   SEGMENT STACK  'STACK'
+                           186     
+0000 (80                   187                     DB      80 DUP ('Stack ')       ;240 words
+     537461636B20
+     )
+                           188     
+01E0                       189     TopOfStack      LABEL   WORD
+                           190     
+----                       191     STACK   ENDS
+                           192     
+                           193     
+                           194             END     START
+
+ASSEMBLY COMPLETE, NO ERRORS FOUND

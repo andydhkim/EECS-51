@@ -1,0 +1,13 @@
+Dong Hyun Kim
+EE/CS 51
+Homework #1, Problem 8
+
+We first start off by setting a breakpoint at IllegalEventHandler. Once we do so
+and type in the command "go," the IllegalEventHandler is executed by the program.
+If we type "next" for a while, we can see that "DIV CX" is the the instruction that 
+caused the IllegalEventHandler at address 0040:0044. 
+
+This event is executed because DX is not cleared when we DIV CX; if DX's value
+is not properly cleared, it may cause an overflow and create issues, since the
+remainder will try to be stored in DX. Hence, adding the line "XOR DX, DX" will 
+be a sufficient way to get rid of the error by clearing DX to 0000H. 

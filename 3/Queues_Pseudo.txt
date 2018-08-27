@@ -1,0 +1,265 @@
+Dong Hyun Kim
+EE/CS 51
+Homework #3 Outline
+
+
+
+; QueueInit
+;
+; Description:			This function intializes the queue of the passed length
+;						and element size at the passed address. It does all the
+;						necessary initialization to prepare the queue for use. 
+;						After calling the function, the queue will be empty and
+;						ready to accept values. The passed length is the maximum
+;						number of items that can be stored in the queue. The
+;						passed element size specifies whether each entry in the
+;						queue is a byte or a word. If the element size is true
+;						(non-zero) the elements are words and if its false (zero)
+;						they are bytes. The address is passed in SI by value (thus
+;						the queue starts at DS:SI), the length is passed by value
+;						in AX, and the element size is passed by value in BL. The 
+;						length may be ignored if using fixed length queues.
+;
+; Operation:			The include file will create the queue through a struct. It
+;						will have the index of the first element (head), index of the
+;						next open space after the last element (tail), size of the 
+;						element (either byte or word), the length of the queue, and
+;						the memeory size allocated for the queue. If size is 0, the
+;						queue will allocate 8-bits per element; otherwise, the queue
+;						will allocate 16-bits per element. The index of the head and 
+;						tail will be set to the base address to form a 'circular' queue.
+;
+; Arguments:			a (SI)	- address with memory location to start queue.
+;						l (AX)	- length of the queue.
+;						s (BL)	- element size.
+; Return Value:			None.
+;
+; Local Variables:		a (SI)	- address with memory location to start queue.
+;						length	- length of the queue.
+;						head	- index of the first element.
+;						tail 	- index of the next open space after the last element.
+;						size 	- defines whether the element is a byte or a word.
+;						maxsize	- memory block allocated for the queue.
+; Shared Variables:		None.
+; Global Variables:		None.
+;
+; Input:				None.
+; Output:				None.
+;
+; Error Handling:		None.
+;
+; Algorithms:			None.
+; Data Structures:		Queues.
+;
+; Registers Changed:	None.
+; Limitations:			Length of the queue. Size of queue has to be power of 2.
+;
+; Author:				Dong Hyun Kim
+; Last Modified:		Oct 18, 2016
+;
+;
+; Pseudo Code
+;
+;	Struct Queue 				; create the struct queue, will be in include file
+;		head					; index of first element
+;		tail					; index of next open space after last element
+;		size					; whether element is byte or word
+;		length 					; length of the queue
+;		data[maxsize]			; memory block allocated for the queue
+;	IF (size == 0) THEN			; if statement to define size of element
+;		a.size = 1				; if size is 0, set element size to byte
+;	ELSE 						; 
+;		a.size = 2				; otherwise, set element size to word
+;	ENDIF						;
+;	a.head = &a.data 			; set index of head to base address 
+;	a.tail = a.head				; set index of tail to base address
+;	RETURN
+
+
+; QueueEmpty
+;
+; Description:			The function is called with the address of the queue to be
+;						checked. It returns with the zero flag set if the queue is
+;						empty and with the zero flag reset otherwise. The address
+;						is passed in SI by value (thus the queue starts at DS:SI).
+;
+; Operation:			The function will compare the index of the head and the index
+;						of the tail. If the two are equal, the queue is empty.			
+;
+; Arguments:			a (SI)	- address of queue to be checked.
+; Return Value:			ZF		- set to 1 if queue is empty, 0 otherwise.
+;
+; Local Variables:		head	- index of the first element.
+;						tail 	- index of the next open space after the last element.
+; Shared Variables:		None.
+; Global Variables:		None.
+;
+; Input:				None.
+; Output:				None.
+;
+; Error Handling:		None.
+;
+; Algorithms:			None.
+; Data Structures:		Queues.
+;
+; Registers Changed:	ZF.
+; Limitations:			Length of the queue. Size of queue has to be power of 2.
+;
+; Author:				Dong Hyun Kim
+; Last Modified:		Oct 18, 2016
+;
+;
+; Pseudo Code
+;
+;	flag = RETURN (a.head == a.tail)	; if Queue is empty, set flag to 1
+
+
+
+
+
+; QueueFull
+;
+; Description:			The function is called with the address of the queue to be
+;						chcked. It returns with the zero flag set if the queue is
+;						full and with the zero flag reset otherwise. The address
+;						is passed in SI by value (thus the queue starts at DS:SI).
+;
+; Operation:			The function will compare (1) the index of the first element
+;						with (2) (the index of the open space after the last element
+;						+ the size of the element) mod (length of the queue). This will
+;						essentially check to see if the index of the head is equal to 
+;						the index of the tail after adding the size and looping around
+;						the circular queue. If they are equal, the queue is full.
+;
+; Arguments:			a (SI)	- address of queue to be checked.
+; Return Value:			ZF		- set to 1 if queue is full, 0 otherwise.
+;
+; Local Variables:		length	- length of the queue
+;						head	- index of the first element.
+;						tail 	- index of the next open space after the last element.
+;						size 	- defines whether the element is a byte or a word.
+; Shared Variables:		None.
+; Global Variables:		None.
+;
+; Input:				None.
+; Output:				None.
+;
+; Error Handling:		None.
+;
+; Algorithms:			None.
+; Data Structures:		Queues.
+;
+; Registers Changed:	ZF.
+; Limitations:			Length of the queue. Size of queue has to be power of 2.
+;
+; Author:				Dong Hyun Kim
+; Last Modified:		Oct 18, 2016
+;
+; 
+; Pseudo Code
+;
+;
+;	flag = RETURN (a.head == 							; if queue is full,
+;				  ((a.tail + a.size) mod a.length)) 	; set flag to 1
+
+
+
+; Dequeue
+;
+; Description:			The function removes either an 8 or 16-bit value (depending
+;						on the queue's element size) from the head of the queue at
+;						the passed address and returns it in AL or AX. The value
+;						is returned in AL if the element size is bytes and in AX
+;						if it is words. If the queue is empty it waits until the
+;						queue has a value to be removed and returned. It does not
+;						return until a value is taken from the queue. The address
+;						is passed in SI by value (thus the queue starts at DS:SI).
+;
+; Operation:			The function initially starts off by setting the value of 
+;						the head equal to a temporary varialbe called value. The
+;						index of the head is then reset by adding the previous 
+;						index of the head with the size, and performing a modulo
+;						operation with the length. This will set the index of the 
+;						head to the next element.
+;
+; Arguments:			a (SI)	- address of queue to be checked.
+; Return Value:			AL/AX	- value at head of queue. AL if element size is
+;								  bytes, AX if words.
+;
+; Local Variables:		length	- length of the queue
+;						head	- index of the first element.
+;						size 	- defines whether the element is a byte or a word.
+;						value   - the value of the head before it is removed.
+; Shared Variables:		None.
+; Global Variables:		None.
+;
+; Input:				None.
+; Output:				None.
+;
+; Error Handling:		None.
+;
+; Algorithms:			None.
+; Data Structures:		Queues.
+;
+; Registers Changed:	AL/AX.
+; Limitations:			Length of the queue. Size of queue has to be power of 2.
+;
+; Author:				Dong Hyun Kim
+; Last Modified:		Oct 18, 2016
+;
+;
+; Pseudo Code
+;
+;	value = *a.head								; get value of first element
+;	a.head = (a.head + a.size) mod a.length		; set index of head to next index
+;	RETURN value
+
+
+
+; Enqueue
+;
+; Description:			This function adds the passed 8 or 16-bit value to the tail
+;						of the queue at the passed address. If the queue is full it
+;						waits until the queue has an open space in which to add the
+;						value. It does not return until the value is added to the 
+;						queue. The address is passed in SI by value (thus the queue
+;						starts at DS:SI) and the value to enqueue is passed by value
+;						in AL if the element size for the queue is bytes and in AX
+;						if it is words.
+;
+; Operation:			The function sets the value of tail equal to v. The index
+;						of the tail is reset by adding the index of the tail with
+;						the size and perfomring a modulo operation with the length.
+;						This will set the index of the tail to the next open space.
+;
+; Arguments:			a (SI)		- address of queue to be checked.
+;						v (AL/AX) 	- value to be added to the queue. AL if element
+;									  size is bytes, AX if words.
+; Return Value:			None.
+;
+; Local Variables:		length	- length of the queue
+;						tail 	- index of the next open space after the last element.
+;						size 	- defines whether the element is a byte or a word.
+; Shared Variables:		None.
+; Global Variables:		None.
+;
+; Input:				None.
+; Output:				None.
+;
+; Error Handling:		None.
+;
+; Algorithms:			None.
+; Data Structures:		Queues.
+;
+; Registers Changed:	None.
+; Limitations:			Length of the queue. Size of queue has to be power of 2.
+;
+; Author:				Dong Hyun Kim
+; Last Modified:		Oct 18, 2016
+;
+;
+; Pseudo Code
+;
+;	*a.tail = v									; set value at tail to v 
+;	a.tail = (a.tail + a.size) mode a.length	; set index of tail to next open space 
+;	RETURN

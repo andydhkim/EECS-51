@@ -1,0 +1,32 @@
+Dong Hyun Kim
+EE/CS 51
+Homework #1, Problem 6
+
+1. NMI
+Address of first instruction:
+f800:753c
+
+First three assembly language instructions:
+PUSH    BP
+MOV     BP, SP
+IN      AL, DX
+
+
+2. Breakpoint
+Address of first instruction:
+f800:75ba
+
+First three assembly language instructions:
+PUSH    BP
+MOV     BP, SP
+IN      AL, DX
+
+
+3. Single-step interrupt
+Address of first instruction:
+f800:75fe
+
+First three assembly language instructions:
+PUSH    BP
+MOV     BP, SP
+IN      AL, DX

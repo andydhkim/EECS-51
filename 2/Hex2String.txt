@@ -1,0 +1,68 @@
+       NAME    Hex2String
+
+
+; Hex2String
+;
+;
+; Description:      This function converts the 16-bit unsigned value passed to
+;                   it to hexadecimal (at most 4 digits) and stores it as a string.  
+;					The string should contain the <null> terminated hexadecimal 
+;					representation of the value in ASCII. The resulting string
+;					is stored starting at the memory location indicated by the
+;					passed address.
+;
+; Operation:        The function starts with the largest power of 16 possible
+;                   (4096) and loops dividing the number by the power of 16;
+;                   the quotient is a digit and the remainder is used in the
+;                   next iteration of the loop.  Each loop iteration divides
+;                   the power of 16 by 16 until it is 0. At that point the number
+;					has been converted to hexadecial. Each time a digit is found, 
+;					it is converted into a string and added to the address in the 
+;					correct order. 
+;
+; Arguments:        a - passed address in SI by value
+;					n - passed number in AX by value
+; Return Values:    none
+;
+; Local Variables:  arg         - copy of passed binary value to convert.
+;                   digit       - computed hexadecimal digit.
+;                   i           - different bytes of address.
+;                   pwr16       - current power of 16 being computed.
+;                   result      - string version of hexadecimal.
+; Shared Variables: None.
+; Global Variables: None.
+;
+; Input:            None.
+; Output:           None.
+;
+; Error Handling:   None.
+;
+; Algorithms:       Repeatedly divide by powers of 16 and get the remainders
+;                   (which are the hexadecimal digits).
+; Data Structures:  None.
+;
+; Known Bugs:       None.
+; Limitations:      None.
+;
+; Revision History: 10/10/16	 Dong Hyun Kim	   initial revision
+;
+;
+;
+; Pseudo Code
+;
+;	result = 0
+;	pwr16 = 4096
+;	i = 0
+;	WHILE (pwr16 > 0)
+;		digit = arg/pwr16
+;		IF (digit > 9) THEN 
+;			result = digit + 55
+;		ELSE
+;			result = digit + 48
+;		ENDIF
+;		a[i] = result
+;		arg = arg MODULO pwr16
+;		pwr16 = pwr16/16
+;		i += 1
+;	ENDWHILE
+;	a[i] = 0}

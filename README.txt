@@ -1,0 +1,1 @@
+Code for EE/CS 51, SoPC/Digital Oscilloscope Project. Released as public since the course is no longer offered at Caltech.

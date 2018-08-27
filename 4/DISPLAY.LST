@@ -1,0 +1,797 @@
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    1
+
+
+DOS 5.0 (038-N) 8086/87/88/186 MACRO ASSEMBLER V3.1 ASSEMBLY OF MODULE DISPLAY
+OBJECT MODULE PLACED IN DISPLAY.OBJ
+ASSEMBLER INVOKED BY:  C:\UTIL\ASM86.EXE DISPLAY.ASM M1 DB EP
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                             1             NAME    Display
+                             2     
+                             3     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             4     ;                                                                            ;
+                             5     ;                                   Display                                  ;
+                             6     ;                               Display Functions                                ;
+                             7     ;                                   EE/CS 51                                 ;
+                             8     ;                                                                            ;
+                             9     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                            10     
+                            11     
+                            12     ; Description:  This file includes five display functions used for RoboTrike. It
+                            13     ;                               can initialize shared variables that will be used in 
+                                   other functions
+                            14     ;                               and output a string or number to the display. It also
+                                    displays
+                            15     ;                               a digit on the LED display whenever there is an inter
+                                   rupt. 
+                            16     ;               
+                            17     ; Table of Contents:
+                            18     ;   Display:            Outputs a string to the display.
+                            19     ;       DisplayNum:             Outputs a number to the display in decimal, with a ne
+                                   gative
+                            20     ;                                       sign if negative. 
+                            21     ;       DisplayHex:             Outputs a number to the display in hexadecimal.
+                            22     ;       InitDisplay:    Initializes the shared variables that will be used in the fil
+                                   e.
+                            23     ;       Multiplex:              Displays a digit on the display whenever there is an 
+                                   interrupt.
+                            24     ;       
+                            25     ; Revision History:
+                            26     ;   01/27/16    Dong Hyun Kim       initial revision
+                            27     ;   01/28/16    Dong Hyun Kim       debugged code and updated comments
+                            28     
+                            29     
+                            30     
+                            31     ; local include files
+                            32 +1  $INCLUDE(Display.INC)
+                      =1    33     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    34     ;                                                                            ;
+                      =1    35     ;                                 Display.INC                                ;
+                      =1    36     ;                               Display Functions                                ;
+                      =1    37     ;                                 Include File                               ;
+                      =1    38     ;                                                                            ;
+                      =1    39     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    40     
+                      =1    41     ; This file contains the definitions for the Display Program (Display.asm).
+                      =1    42     ;
+                      =1    43     ; Revision History:
+                      =1    44     
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    2
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                      =1    45     
+                      =1    46     ; Definitions
+  0008                =1    47     BUF_LENGTH      EQU     8           ;length of the buffer containing code segment
+  0008                =1    48     LED_LENGTH      EQU     8           ;number of digits that can be displayed on 
+                      =1    49                                         ;   the LED display
+  0000                =1    50     ASCII_NULL      EQU     0H          ;string termination character (<null>)
+                      =1    51     
+                      =1    52     ; Addresses
+  0000                =1    53     OFFSETAD        EQU     0000H       ;address of leftmost digit of LED display
+                            54 +1  $INCLUDE(Timer2.INC)
+                      =1    55     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    56     ;                                                                            ;
+                      =1    57     ;                                  Timer2.INC                                ;
+                      =1    58     ;                           Timer2 Handler Functions                         ;
+                      =1    59     ;                                 Include File                               ;
+                      =1    60     ;                                                                            ;
+                      =1    61     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      =1    62     
+                      =1    63     ; This file contains the definitions for the Timer2 Handler Functions program, 
+                      =1    64     ; (Timer2.ASM).
+                      =1    65     ;
+                      =1    66     ; Revision History:
+                      =1    67     ;   10/27/16    Dong Hyun Kim       initial revision
+                      =1    68     ;       10/28/16        Dong Hyun Kim           updated Tmr2CtrlVal to enable interru
+                                   pt
+                      =1    69     
+                      =1    70     
+                      =1    71     ; Timer Definitions
+                      =1    72     
+                      =1    73     ; Addresses
+  FF66                =1    74     Tmr2Ctrl        EQU     0FF66H          ;address of Timer 2 Control Register
+  FF62                =1    75     Tmr2MaxCnt      EQU     0FF62H          ;address of Timer 2 Max Count A Register
+  FF60                =1    76     Tmr2Count       EQU     0FF60H          ;address of Timer 2 Count Register
+                      =1    77     
+                      =1    78     ; Control Register Values
+  E001                =1    79     Tmr2CtrlVal     EQU     0E001H          ;value to write to Timer 2 Control Register
+                      =1    80                                             ;1---------------  enable timer
+                      =1    81                                             ;-1--------------  write to control
+                      =1    82                                             ;--1-------------  enable interrupts
+                      =1    83                                             ;----000000-0000-  reserved
+                      =1    84                                             ;---0------0-----  read only
+                      =1    85                                             ;---------------1  continuous mode
+                      =1    86     
+                      =1    87     ; Interrupt Vectors
+  0013                =1    88     Tmr2Vec         EQU     19              ;interrupt vector for Timer 2
+                      =1    89     
+                      =1    90     
+                      =1    91     ; Interrupt Controller Definitions
+                      =1    92     
+                      =1    93     ; Addresses
+  FF32                =1    94     INTCtrlrCtrl    EQU     0FF32H          ;address of interrupt controller for timer
+  FF22                =1    95     INTCtrlrEOI     EQU     0FF22H          ;address of interrupt controller EOI register
+                      =1    96     
+                      =1    97     ; Register Values
+  0001                =1    98     INTCtrlrCVal    EQU     00001H          ;set priority for timers to 1 and enable
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    3
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                      =1    99                                             ;000000000000----  reserved
+                      =1   100                                             ;------------0---  enable timer interrupt
+                      =1   101                                             ;-------------001  timer priority
+  0008                =1   102     TimerEOI        EQU     00008H          ;Timer EOI command (same for all timers)
+                      =1   103                                     
+                      =1   104     
+                      =1   105     ; Timing Definitions
+                      =1   106     
+  0900                =1   107     COUNTS_PER_MS   EQU     2304            ;number of timer counts per 1 ms 
+                      =1   108                                                                                     ;
+                                      (assumes 18.432 MHz clock)
+                           109     
+                           110     
+                           111     
+                           112     CGROUP  GROUP   CODE
+                           113     DGROUP  GROUP   DATA
+                           114     
+----                       115     CODE    SEGMENT PUBLIC 'CODE'
+                           116     
+                           117     
+                           118             ASSUME  CS:CGROUP, DS:DGROUP
+                           119     
+                           120                     
+                           121                     
+                           122     ;external function declarations
+                           123             EXTRN   Dec2String:NEAR                 ;converts singed 16-bit value to deci
+                                   mal 
+                           124                                                                                     ;
+                                      and outputs the string
+                           125                     EXTRN   Hex2String:NEAR                 ;converts unsigned 16-bit val
+                                   ue to hexa-
+                           126                                                                                     ;
+                                      decimal and outputs the string
+                           127                     EXTRN   ASCIISegTable:BYTE      ;table of segment patterns for displa
+                                   y
+                           128     
+                           129                     
+                           130     
+                           131                
+                           132     ; Display
+                           133     ;
+                           134     ; Description:                  The function is passed a <null> terminated string (st
+                                   r) 
+                           135     ;                                               to the output to the LED display. The
+                                    string is passed 
+                           136     ;                                               by reference in ES:SI. The string wil
+                                   l be left justified
+                           137     ;                       at all times. If the string is of longer length than 
+                           138     ;                       LED_LENGTH, only the first LED_LENGTH digits/characters 
+                           139     ;                       will be displayed on the LED. If the string is of shorter
+                           140     ;                       length than LED_LENGTH, only the digits associated with
+                           141     ;                       the string will be shown on the LED.
+                           142     ;
+                           143     ; Operation:                    The function will go through each digit of the code s
+                                   egment
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    4
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           144     ;                                               until there is an ASCII_NULL (0H). Ea
+                                   ch of the digits
+                           145     ;                       will be converted into the appropriate segment pattern
+                           146     ;                       (which is represented by a binary number in segtable.asm)
+                           147     ;                       and stored into MuxBuffer. Any digits after the ASCII_NULL
+                           148     ;                       will be cleared by being set to 0, so that there are only
+                           149     ;                       the necessary digits displayed on the LED.
+                           150     ;
+                           151     ; Arguments:                    str (ES:SI)     - address with memory location contai
+                                   ning string
+                           152     ; Return Value:                 None.
+                           153     ;
+                           154     ; Local Variables:              CurrentVal(AL) - current value of string
+                           155     ;                       i                 (BX) - count variable for MuxBuffer.
+                           156     ; Shared Variables:             MuxIndex  (DS) - index of current digit (R/W).
+                           157     ;                                               MuxBuffer (DS) - array containing all
+                                    of the digits
+                           158     ;                                                                                that
+                                    will be displayed (R/W).
+                           159     ; Global Variables:             None.
+                           160     ;
+                           161     ; Input:                                None.
+                           162     ; Output:                               Communicates with the LED display but does no
+                                   t output directly.
+                           163     ;
+                           164     ; Error Handling:               None.
+                           165     ;
+                           166     ; Algorithms:                   None.
+                           167     ; Data Structures:              None.
+                           168     ;
+                           169     ; Registers Changed:    Flags, AX, BX, SI.
+                           170     ; Limitations:                  None.
+                           171     ; Known Bugs:           None.
+                           172     ; Special Notes:        ES is used (as opposed to DS) so the string can be in 
+                           173     ;                                               code segment (i.e. it can be a consta
+                                   nt string) without
+                           174     ;                                               needing to change DS, which can cause
+                                    many problems.
+                           175     ; Revision History:     01/28/16    Dong Hyun Kim       initial revision
+                           176     ;                       01/28/16    Dong Hyun Kim       debugged code and updated com
+                                   ments
+                           177     
+0000                       178     Display                 PROC        NEAR
+                           179                     PUBLIC      Display
+                           180     
+0000                       181     DisplayInit:                            ;Initialization
+0000 BB0000                182             MOV     BX, 0                   ;Set count variable to 0 so the function
+                           183                                                                                     ;
+                                      can start loop at the first element
+                           184                                                                                     ;
+                                      of MuxBuffer
+                           185             ;JMP    SetPatternLoop          
+                           186     
+0003                       187     SetPatternLoop:                         ;loop that goes through MuxBuffer to
+                           188                                             ;   convert digit into segment pattern
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    5
+
+
+LOC  OBJ                  LINE     SOURCE
+
+0003 83FB08                189             CMP     BX, BUF_LENGTH          ;if the MuxBuffer is already fully converted,
+                           190                                             ;   there is no space to convert any more
+                           191                                             ;   digits so we should exit the loop.
+0006 7316                  192             JAE     ClearRemainderLoop      ;if i >= BUF_LENGTH, exit the loop and
+                           193                                             ;   clear the remainder of MuxBuffer so 
+                           194                                             ;   the it won't affect any strings in 
+                           195                                             ;   the future
+                           196             ;JB     CheckIfNull             ;if i < BUF_LENGTH, continue to stay in 
+                           197                                             ;   the loop and check if digit is an
+                           198                                             ;   ASCII_NULL 
+                           199             
+0008                       200     CheckIfNull:                            ;checks to see if there is ASCII_NULL
+                           201                                             ;   in the string
+0008 268A04                202             MOV     AL, BYTE PTR ES:[SI]    ;need to move value to AL to compare with 0,
+                           203                                             ;   it is also used as an index into the 
+                           204                                             ;   segtable when the XLAT command is called
+000B 3C00                  205             CMP     AL, ASCII_NULL          ;if the current digit in the passed string
+                           206                                             ;   is an ASCII_NULL, we should exit the
+                           207                                             ;   loop
+000D 740F                  208             JE      ClearRemainderLoop      ;if current digit == ASCII_NULL, exit the
+                           209                                             ;   loop and clear remainder        
+                           210             ;JNE    SetPattern              ;if current digit =! ASCI_NULL, continue
+                           211                                             ;   to stay in the loop and set pattern
+                           212             
+000F                       213     SetPattern:                             ;sets the segment pattern for the digits
+                           214                                             ;   in MuxBuffer
+000F 53                    215             PUSH    BX                      ;store BX in stack since XLAT command affects
+                                    it
+0010 BB0000         E      216             MOV     BX, OFFSET(ASCIISegTable)   ;Prepare for the XLAT command by setting
+                           217                                                 ;   BX to point to the beginning of
+                           218                                                 ;   segtable
+0013 2ED7                  219             XLAT    CS:ASCIISegTable        ;lookup the segment pattern in the segtable
+                           220                                             ;   and store it back in AL.
+0015 5B                    221             POP     BX                      ;restore value of BX
+0016 88870200       R      222             MOV     MuxBuffer[BX], AL       ;Store the converted digit into MuxBuffer
+001A 46                    223             INC     SI                      ;look at the next digit of the string
+001B 43                    224             INC     BX                      ;stay in loop by incrementing i
+001C EBE5                  225             JMP     SetPatternLoop          ;continue the process through the string
+                           226             
+001E                       227     ClearRemainderLoop:                     ;loop to clear any data after the ASCII_NULL
+                           228                                             ;   to make sure there are no problems in
+                           229                                             ;   the future regarding the display.
+001E 83FB08                230             CMP     BX, BUF_LENGTH          ;if final index of the MuxBuffer is reached
+                           231                                             ;   we have cleared all the data and can
+                           232                                             ;   safely exit loop
+0021 7309                  233             JAE     EndDisplay              ;if i >= BUF_LENGTH, we are done clearing
+0023 C68702000090   R      234             MOV     MuxBuffer[BX], 0        ;if i < BUF_LENGTH, set the element in 
+                           235                                             ;   the MuxBuffer to 0
+0029 43                    236             INC     BX                      ;stay in loop by incrementing i
+002A EBF2                  237             JMP     ClearRemainderLoop      ;continue the process until end of MuxBuffer
+                           238                                             ;   is reached
+                           239             
+002C                       240     EndDisplay:                             ;end the function
+002C C3                    241             RET
+                           242     
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    6
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           243     Display         ENDP
+                           244     
+                           245     
+                           246     
+                           247     
+                           248     ; DisplayNum
+                           249     ;
+                           250     ; Description:                  The function is passed a 16-bit value (AX) to output 
+                                   in
+                           251     ;                                               decimal to the LED display. There wil
+                                   l be 5 numerical
+                           252     ;                                               digits if the number is positive, wit
+                                   hout a sign. There
+                           253     ;                                               will be 5 numerical digits and a '-' 
+                                   sign in the front
+                           254     ;                                               if the number is negative. Hence, a p
+                                   ositive number will
+                           255     ;                                               be 5 digits long and a negative numbe
+                                   r will be 6 digits
+                           256     ;                                               long. There may be leading zeroes and
+                                    the number will
+                           257     ;                                               be left justified.
+                           258     ;
+                           259     ; Operation:                    The function will start off by changing the address f
+                                   rom
+                           260     ;                                               DS:SI to ES:SI (hence, the string wil
+                                   l be stored in ES:SI).
+                           261     ;                                               It will then call Dec2String from con
+                                   verts.asm and convert
+                           262     ;                                               the 16-bit signed value into decimal.
+                                    It will end by 
+                           263     ;                                               calling the display function from abo
+                                   ve and outputting the
+                           264     ;                                               decimal to the LED display. 
+                           265     ;
+                           266     ; Arguments:                    n (AX)  - 16-bit signed value
+                           267     ; Return Value:                 None.
+                           268     ;
+                           269     ; Local Variables:              None.
+                           270     ; Shared Variables:             DisBuffer (DS) - array containing the string from the
+                                    
+                           271     ;                                        Dec2String function call (R/W).
+                           272     ; Global Variables:             None.
+                           273     ;
+                           274     ; Input:                                None.
+                           275     ; Output:                               Communicates with the LED display but does no
+                                   t output directly.
+                           276     ;
+                           277     ; Error Handling:               None.
+                           278     ;
+                           279     ; Algorithms:                   None.
+                           280     ; Data Structures:              None.
+                           281     ;
+                           282     ; Registers Changed:    Flags, AX, BX, CX, DX, ES, SI.
+                           283     ; Limitations:                  None.
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    7
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           284     ; Known Bugs:           None.
+                           285     ; Special Notes:        Separate functional specification for the Dec2String
+                           286     ;                                               function is included in the converts.
+                                   asm file.
+                           287     ;
+                           288     ; Revision History:     01/28/16    Dong Hyun Kim       initial revision
+                           289     ;                       01/28/16    Dong Hyun Kim       debugged code and updated com
+                                   ments
+                           290     
+002D                       291     DisplayNum      PROC        NEAR
+                           292                     PUBLIC      DisplayNum
+                           293     
+002D                       294     DisplayNumInit:                                                 ;Initialization
+002D BE0A0090       R      295             MOV     SI, OFFSET(DisBuffer)   ;Use a separate buffer to make sure important
+                                    
+                           296                                             ;   data in SI will not be overwritten 
+                           297                                             ;   and we know where SI is currently 
+                           298                                             ;   pointing.
+0031 1E                    299                     PUSH    DS                                              ;Need to chan
+                                   ge from DS:SI to ES:SI in 
+0032 07                    300                     POP             ES                                              ;
+                                      order to to call Display function
+                           301                                                                                     ;
+                                      correctly.
+                           302                     ;JMP    ConvertNum
+                           303                     
+0033                       304     ConvertNum:                                                             ;Call the Dec
+                                   2String function
+0033 56                    305                     PUSH    SI                                              ;Save the val
+                                   ue of SI because Dec2String
+                           306                                                                                     ;
+                                      modifies SI values                                                              
+                                         
+0034 E80000         E      307                     CALL    Dec2String                              ;Converts the signed 
+                                   16-bit value in AX
+                           308                                                                                     ;
+                                      to decimal and stores it as a string 
+                           309                                                                                     ;
+                                      in ES:SI. 
+0037 5E                    310                     POP             SI                                              ;Retu
+                                   rn SI back to its original value
+                           311                     ;JMP    OutputNum                               
+                           312     
+0038                       313     OutputNum:                                                              ;Call the Dis
+                                   play function
+0038 E8C5FF                314                     CALL    Display                                 ;Output the string to
+                                    the display, which 
+                           315                                                                                     ;
+                                      will be included in MuxBuffer and 
+                           316                                                                                     ;
+                                      displayed correctly on the LED through
+                           317                                             ;   Multiplex if needed.
+                           318                     ;JMP    EndDisplayNum                   
+                           319                     
+003B                       320     EndDisplayNum:                                                  ;end the function
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    8
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                                              
+003B C3                    321                     RET
+                           322     
+                           323     DisplayNum      ENDP
+                           324     
+                           325     
+                           326     
+                           327     
+                           328     ; DisplayHex
+                           329     ;
+                           330     ; Description:                  The function is passed a 16-bit unsigned value (AX) t
+                                   o 
+                           331     ;                                               output in hexadecimal to the LED disp
+                                   lay. There will be 4
+                           332     ;                                               numerical digits. There may be leadin
+                                   g zeroes and the 
+                           333     ;                                               number will be left justified. 
+                           334     ;
+                           335     ; Operation:                    The function will start off by changing the address f
+                                   rom
+                           336     ;                                               DS:SI to ES:SI (hence, the string wil
+                                   l be stored in ES:SI).
+                           337     ;                                               It will then call Hex2String from con
+                                   verts.asm and convert
+                           338     ;                                               the 16-bit unsigned value into hexade
+                                   cimal. It will end by 
+                           339     ;                                               calling the display function from abo
+                                   ve and output the
+                           340     ;                                               decimal to the LED display.
+                           341     ;
+                           342     ; Arguments:                    n (AX)  - 16-bit unsigned value
+                           343     ; Return Value:                 None.
+                           344     ;
+                           345     ; Local Variables:              None.
+                           346     ; Shared Variables:             DisBuffer (DS) - array containing the string from the
+                                    
+                           347     ;                                        Dec2String function call (R/W).
+                           348     ; Global Variables:             None.
+                           349     ;
+                           350     ; Input:                                None.
+                           351     ; Output:                               Communicates with the LED display but does no
+                                   t output directly.
+                           352     ;
+                           353     ; Error Handling:               None.
+                           354     ;
+                           355     ; Algorithms:                   None.
+                           356     ; Data Structures:              None.
+                           357     ;
+                           358     ; Registers Changed:    Flags, AX, BX, CX, DX, ES, SI.
+                           359     ; Limitations:                  None.
+                           360     ; Known Bugs:           None.
+                           361     ; Special Notes:        Separate functional specification for the Hex2String
+                           362     ;                                               function is included in the converts.
+                                   asm file.   
+                           363     ;
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE    9
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           364     ; Revision History:     01/28/16    Dong Hyun Kim       initial revision
+                           365     ;                       01/28/16    Dong Hyun Kim       debugged code and updated com
+                                   ments
+                           366     
+003C                       367     DisplayHex              PROC        NEAR
+                           368                     PUBLIC      DisplayHex
+                           369     
+003C                       370     DisplayHexInit:                                                 ;Initialization
+003C BE0A0090       R      371             MOV     SI, OFFSET(DisBuffer)   ;Use a separate buffer to make sure important
+                                    
+                           372                                             ;   data in SI will not be overwritten 
+                           373                                             ;   and we know where SI is currently 
+                           374                                             ;   pointing.
+0040 1E                    375                     PUSH    DS                                              ;Need to chan
+                                   ge from DS:SI to ES:SI in 
+0041 07                    376                     POP             ES                                              ;
+                                      order to to invoke Display function
+                           377                                                                                     ;
+                                      correctly.
+                           378                     ;JMP    ConvertHex                              
+                           379     
+0042                       380     ConvertHex:                                                             ;Call the Hex
+                                   2String function
+0042 56                    381                     PUSH    SI                                              ;Save the val
+                                   ue of SI because Hex2String
+                           382                                                                                     ;
+                                      modifies SI values
+0043 E80000         E      383                     CALL    Hex2String                              ;Converts the unsigne
+                                   d 16-bit value in AX
+                           384                                                                                     ;
+                                      to hexadecimal and stores it as a string 
+                           385                                                                                     ;
+                                      in ES:SI. 
+0046 5E                    386                     POP             SI                                              ;Retu
+                                   rn SI back to its original value
+                           387                     ;JMP    OutputHex                               
+                           388     
+0047                       389     OutputHex:                                                              ;Call the dis
+                                   play function      
+0047 E8B6FF                390                     CALL    Display                                 ;Output the string to
+                                    the display, which 
+                           391                                                                                     ;
+                                      will be included in MuxBuffer and 
+                           392                                                                                     ;
+                                      displayed correctly on the LED through
+                           393                                             ;   Multiplex if needed.
+                           394                     ;JMP    EndDisplayHex
+                           395     
+004A                       396     EndDisplayHex:                                                  ;end the function
+004A C3                    397                     RET
+                           398     
+                           399     DisplayHex      ENDP
+                           400     
+                           401     
+                           402     
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE   10
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           403     
+                           404     ; InitDisplay
+                           405     ;
+                           406     ; Description:                  This function initializes the index of the current di
+                                   git
+                           407     ;                                               being output and the buffer (MuxBuffe
+                                   r) containing the 
+                           408     ;                                               digits that will be displayed. 
+                           409     ;
+                           410     ; Operation:                    The index of the current digit, MuxIndex, is set to z
+                                   ero. The
+                           411     ;                                               function will then go through each di
+                                   git of the MuxBuffer
+                           412     ;                                               and clear the values. This will succe
+                                   ssfully initialize
+                           413     ;                                               the code segment.
+                           414     ;
+                           415     ; Arguments:                    None.
+                           416     ; Return Value:                 None.
+                           417     ;
+                           418     ; Local Variables:              i                 (SI) - count variable for MuxBuffer
+                                   .
+                           419     ; Shared Variables:             MuxIndex  (DS) - index of current digit to be output 
+                                   (R/W).
+                           420     ;                                               MuxBuffer (DS) - array containing all
+                                    of the digits
+                           421     ;                                                                                that
+                                    will be displayed (R/W).
+                           422     ; Global Variables:             None.
+                           423     ;
+                           424     ; Input:                                None.
+                           425     ; Output:                               None.
+                           426     ;
+                           427     ; Error Handling:               None.
+                           428     ;
+                           429     ; Algorithms:                   None.
+                           430     ; Data Structures:              None.
+                           431     ;
+                           432     ; Registers Changed:    Flags, SI.
+                           433     ; Limitations:                  None.
+                           434     ; Known Bugs:           None.
+                           435     ; Special Notes:        None.
+                           436     ;
+                           437     ; Revision History:     01/28/16    Dong Hyun Kim       initial revision
+                           438     ;                       01/28/16    Dong Hyun Kim       debugged code and updated com
+                                   ments 
+                           439     
+004B                       440     InitDisplay             PROC        NEAR
+                           441                     PUBLIC      InitDisplay
+                           442     
+004B                       443     InitDisplayInit:                                                ;Initialization
+004B C70600000000   R      444                     MOV             MuxIndex, 0                             ;Set index of
+                                    current digit to 0 in order to
+                           445                                                                                     ;
+                                      start at the beginning of the MuxBuffer
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE   11
+
+
+LOC  OBJ                  LINE     SOURCE
+
+0051 BE0000                446                     MOV             SI, 0                                   ;Set count va
+                                   riable to 0 so the function
+                           447                                                                                     ;
+                                      can start loop at the first element
+                           448                                                                                     ;
+                                      of MuxBuffer
+                           449                     ;JMP    ClearMuxBufLoop                 
+                           450     
+0054                       451     ClearMuxBufLoop:                                                ;loop to initialize v
+                                   alues of the MuxBuffer
+0054 83FE08                452                     CMP             SI, BUF_LENGTH                  ;check if the index o
+                                   f current digit is
+                           453                                                                                     ;
+                                      greater than the BUF_LENGTH
+0057 7309                  454                     JAE             EndInitDisplay                  ;if index >= BUF_LENG
+                                   TH, we have successfully
+                           455                                                                                     ;
+                                      initialized MuxBuffer
+                           456                     ;JB             ClearMuxBuf                             ;if not, we h
+                                   ave to initialize the value
+                           457             
+0059                       458     ClearMuxBuf:                                                    ;sets the value of cu
+                                   rrent digit to 0
+0059 C68402000090   R      459                     MOV             MuxBuffer[SI], 0                ;initializes the valu
+                                   e of current digit
+                           460                                                                                     ;
+                                      by setting it to 0
+005F 46                    461                     INC             SI                                              ;move
+                                    on to the next element of MuxBuffer
+0060 EBF2                  462                     JMP             ClearMuxBufLoop                 ;repeat the process u
+                                   ntil index >= BUF_LENGTH
+                           463     
+0062                       464     EndInitDisplay:                                                 ;end the function
+0062 C3                    465                     RET
+                           466     
+                           467     InitDisplay             ENDP
+                           468     
+                           469     
+                           470     
+                           471     
+                           472     ; Multiplex
+                           473     ;
+                           474     ; Description:                  The function is called whenever there is an interrupt
+                           475     ;                                               and displays a digit on the LED displ
+                                   ay. It will be
+                           476     ;                                               called every millisecond and go throu
+                                   gh the entire MuxBuffer
+                           477     ;                       from left to right to display the string on the LED
+                           478     ;                                               display correctly.
+                           479     ;
+                           480     ; Operation:                    The function will first obtain the address to output 
+                                   the
+                           481     ;                       current digit within MuxBuffer. The function will use 
+                           482     ;                       then use the OUT command to display the  current digit at
+                           483     ;                       the appropriate I/O location. The OUT command will only 
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE   12
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           484     ;                       light up one digit at a time, so it will have to go through
+                           485     ;                       the entire MuxBuffer by increasing the MuxIndex. Once 
+                           486     ;                       MuxIndex is greater than BUF_LENGTH,  it will wrap around
+                           487     ;                       the MuxBuffer and repeat the entire process again.
+                           488     ;
+                           489     ; Arguments:                    None.
+                           490     ; Return Value:                 None.
+                           491     ;
+                           492     ; Local Variables:              DisplayAd (DX) - Address of display that digit will b
+                                   e
+                           493     ;                                                                                writ
+                                   ten to
+                           494     ; Shared Variables:             MuxIndex  (DS) - index of current digit to be output 
+                                   (R/W).
+                           495     ;                                               MuxBuffer (DS) - array containing all
+                                    of the digits
+                           496     ;                                                                                that
+                                    will be displayed (R/W).
+                           497     ; Global Variables:             None.
+                           498     ;
+                           499     ; Input:                                None.
+                           500     ; Output:                               Pattern segment of digit to the LED display. 
+                           501     ;
+                           502     ; Error Handling:               None.
+                           503     ;
+                           504     ; Algorithms:                   None.
+                           505     ; Data Structures:              None.
+                           506     ;
+                           507     ; Registers Changed:    Flags, AL, DX, SI.
+                           508     ; Limitations:                  None.
+                           509     ; Known Bugs:           None.
+                           510     ; Special Notes:        None.
+                           511     ;
+                           512     ; Revision History:  
+                           513     
+0063                       514     Multiplex       PROC        NEAR
+                           515                     PUBLIC      Multiplex
+                           516     
+0063                       517     MultiplexInit:                                                  ;Initialization 
+                                      
+0063 8B360000       R      518                     MOV             SI, MuxIndex                    ;Store the index of c
+                                   urrent digit so the 
+                           519                                                                                     ;
+                                      function can increment later            
+0067 BA0000                520                     MOV     DX, OFFSETAD                    ;Obtain the address of the le
+                                   ftmost digit
+                           521                                                                                     ;
+                                      on the LED display 
+006A 03160000       R      522                     ADD             DX, MuxIndex                    ;Add index of current
+                                    digit to OFFSETAD
+                           523                                                                                     ;
+                                      to obtain the final address to output
+                           524                                                                                     ;
+                                      the current digit
+                           525                     ;JMP    MultiplexPattern                
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE   13
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           526                     
+006E                       527     MultiplexPattern:                                               ;Output the appropria
+                                   te segment pattern 
+006E 8A840200       R      528                     MOV             AL, MuxBuffer[SI]               ;Obtain the segment p
+                                   attern from MuxBuffer
+0072 EE                    529                     OUT             DX, AL                                  ;Output the s
+                                   egment pattern to the correct
+                           530                                                                                     ;
+                                      address of the LED display
+                           531                     ;JMP    CheckIndex                              ;
+                           532     
+0073                       533     CheckIndex:                                                             ;Wrap around 
+                                   MuxBuffer if index is greater
+                           534                                             ;   than BUF_LENGTH
+0073 46                    535                     INC             SI                                              ;Move
+                                    on to the next index of digit
+0074 81E60700              536                     AND             SI, BUF_LENGTH - 1              ;MuxIndex = MuxIndex 
+                                   MOD BUF_LENGTH
+                           537                                                                                     ;
+                                      allows the MuxIndex to wrap around
+                           538                                                                                     ;
+                                      MuxBuffer and go to the beginning
+0078 89360000       R      539                     MOV             MuxIndex, SI                    ;update the value of 
+                                   MuxIndex if needed
+                           540                     ;JMP    EndMultiplex
+                           541     
+007C                       542     EndMultiplex:                                                   ;end the function
+007C C3                    543                     RET
+                           544                     
+                           545     Multiplex       ENDP
+                           546     
+                           547     
+                           548     
+                           549     
+----                       550     CODE    ENDS
+                           551     
+                           552     
+                           553                     
+                           554                     
+                           555     ;the data segment (empty for the main loop)
+                           556     
+----                       557     DATA    SEGMENT PUBLIC  'DATA'
+                           558     
+0000 ????                  559     MuxIndex                DW              ?                                       
+                                      ;Index of current digit 
+0002 (8                    560     MuxBuffer               DB              BUF_LENGTH      DUP (?)         ;The array co
+                                   ntaining the all 
+     ??
+     )
+                           561                                                     ;   the digits that will be displayed
+000A (8                    562     DisBuffer       DB      BUF_LENGTH  DUP (?)     ;The array containing the string
+     ??
+     )
+                           563                                                     ;   from the Dec2String and Hex2Strin
+                                   g
+8086/87/88/186 MACRO ASSEMBLER    DISPLAY                                                  12:27:48  10/29/;6  PAGE   14
+
+
+LOC  OBJ                  LINE     SOURCE
+
+                           564                                                     ;   function calls. This buffer is
+                           565                                                     ;   needed because we do not want
+                           566                                                     ;   any important information in 
+                           567                                                     ;   SI to be overwritten, and we
+                           568                                                     ;   also want to make sure where
+                           569                                                     ;   SI is pointing during the call.
+                           570     
+----                       571     DATA    ENDS
+                           572     
+                           573     END
+
+ASSEMBLY COMPLETE, NO ERRORS FOUND
